@@ -1,0 +1,75 @@
+version: '3'
+
+#Default configuration - 9090:prometheus, 9093:alertmanager, 80:zabbix, 10051:zabbix-trapper, 9980:ZAL-sender 
+
+services:
+  ZAL-node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    network_mode: host
+    pid: host
+    volumes:
+      - "/:/host:ro,rslave"
+    command: --path.rootfs=/host
+    restart: always
+
+  ZAL-prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert-rules:/etc/prometheus/alert-rules
+    depends_on:
+      - ZAL-node-exporter
+    restart: always
+    networks:
+      - pae-compose
+
+  ZAL-alertmanager:
+    image: quay.io/prometheus/alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    restart: always
+    networks:
+      - pae-compose
+
+  ZAL-zabbix:
+    image: zabbix/zabbix-appliance:latest
+    ports:
+      - "80:80"
+      - "10051:10051"
+    restart: always
+    networks:
+      - pae-compose
+
+  ZAL-alertmanager-zabbix-sender:
+    image: devopyio/zabbix-alertmanager
+    command: send --addr=0.0.0.0:9980 --zabbix-addr=172.20.0.1:10051 --hosts-path=/etc/sender/hosts.yaml #конфиг производится через команду и аргументы
+    volumes:
+      - ./ZAL/hosts.yaml:/etc/sender/hosts.yaml # этот конфиг требуется указать в конфиге через команду
+    ports:
+      - "9980:9980"
+    restart: always
+    networks:
+     - pae-compose
+
+  alertmanager-zabbix-provisioner:
+    image: devopyio/zabbix-alertmanager
+    command: prov --log.level=info --config-path=/etc/provisioner/config.yaml --url=http://172.20.0.1:80/api_jsonrpc.php --prometheus-url=http://172.20.0.1 --user=Admin --password=zabbix
+    volumes:
+      - ./ZAL/config.yaml:/etc/provisioner/config.yaml
+      - ./alert-rules:/etc/provisioner/alert-rules
+    restart: always
+    networks:
+     - pae-compose
+
+
+networks:
+  pae-compose:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16

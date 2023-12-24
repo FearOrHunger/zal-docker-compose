@@ -1,0 +1,14 @@
+#Provisioner config
+- name: gmauleon-test01
+  hostGroups: 
+    - infra
+  tag: prometheus
+  deploymentStatus: 0
+  itemDefaultApplication: prometheus
+  itemDefaultHistory: 5d
+  itemDefaultTrends: 190d
+  itemDefaultTrapperHosts: 0.0.0.0/0
+  triggerTags:
+    INFRA: ""
+  alertsDir: /etc/provisioner/alert-rules/
+

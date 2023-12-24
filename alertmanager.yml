@@ -1,0 +1,27 @@
+#alertmanager-config
+global:
+
+route:
+   group_by: ['alertname', 'team']
+   group_wait: 30s
+   group_interval: 1m
+   repeat_interval: 2m
+   receiver: infra
+   routes:
+   - receiver: infra
+     match_re:
+       team: infra
+
+receivers:
+- name: 'infra'
+  webhook_configs:
+  - url: http://172.20.0.1:9980/alerts
+    send_resolved: true
+
+#Правила для прекращения реагирования на тригеры ниже приоритетом
+#inhibit_rules:
+#  - source_match:
+#      severity: 'critical'
+#    target_match:
+#      severity: 'warning'
+#    equal: ['alertname', 'dev', 'instance']
